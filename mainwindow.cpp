@@ -6,19 +6,29 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
+    // Setup the UI components
     ui->setupUi(this);
+
+    // Connect the push button release signal to the handleButton function
     connect(ui->sendButton, SIGNAL(released()), this, SLOT (handleButton()));
 
+    // Loop through the serial ports and add connected ones to the combobox
     QList<QSerialPortInfo> infoList = QSerialPortInfo::availablePorts();
     foreach (const QSerialPortInfo &info, infoList)
         ui->ports_combo->addItem(info.portName());
 }
 
+// When the button is pressed, opens serial communication with the selected port
+// from the combobox, then gets the date and time items from the widgets.
+// The data is sent, one piece at a time after a certain tag bit
 void MainWindow::handleButton()
 {
+    // new SerialPort pointer that holds the relevant port
     QSerialPort *serial = new QSerialPort(this);
+    // Gets the port from the combobox
     QString name = ui->ports_combo->currentText();
 
+    // Opens the port with the necessary settings (Baud, data bits, etc)
     serial->setPortName(name);
     serial->open(QIODevice::ReadWrite);
     serial->setBaudRate(QSerialPort::Baud9600);
@@ -27,6 +37,7 @@ void MainWindow::handleButton()
     serial->setStopBits(QSerialPort::OneStop);
     serial->setFlowControl(QSerialPort::NoFlowControl);
 
+    // Get all of the data from the widgets, pretty intuitive from here
     QDate selectedDate = ui->calendar->selectedDate();
     QTime selectedTime = ui->timebox->time();
 
@@ -57,6 +68,7 @@ void MainWindow::handleButton()
     QByteArray tagF("F");
     QByteArray tagG("G");
 
+    // Send all of the data over serial with a tag prepended
     serial->write(tagA);
     serial->write(secondsQb);
     delay();
@@ -84,9 +96,12 @@ void MainWindow::handleButton()
     serial->write(tagG);
     serial->write(dayOfWeekQb);
 
+    // Free the memory associated with the serial pointer after it is used
     delete(serial);
 }
 
+// Delay function I found that will wait one second in the program before continuing to execute more code
+// Used to wait to send more data until the MCU has processed the old bits
 void MainWindow::delay()
 {
     QTime dieTime= QTime::currentTime().addSecs(1);
